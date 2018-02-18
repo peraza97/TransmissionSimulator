@@ -182,9 +182,9 @@ int main(void){
     const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
     
     // Period for the tasks
-    unsigned long int SMTick1_calc = 200;
-    unsigned long int SMTick2_calc = 200;
-    unsigned long int SMTick3_calc = 200;
+    unsigned long int SMTick1_calc = 50;
+    unsigned long int SMTick2_calc = 100;
+    unsigned long int SMTick3_calc = 100;
     //Calculating GCD
     unsigned long int tmpGCD = 1; // Normally initialized to 1
     tmpGCD = findGCD(SMTick1_calc, SMTick2_calc);
