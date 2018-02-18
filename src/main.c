@@ -28,20 +28,21 @@ int JoystickTick(int state){
 
 //Motor TICK FUNCTION
 
-enum Motor_States {Motor_Start, Motor_Off, Motor_On, On_Hold, Off_Hold} motor_State;
+enum Motor_States {Motor_Start, Off, On, On_Hold, Off_Hold} motor_State;
 
 int MotorTick(int state){
-    unsigned char button = ~PINA & 0x01;
+    unsigned char button = ~PINA & 0x02;
     switch (state) {
         case Motor_Start: //MOTOR START STATE
-            state = Motor_Off;
+            state = Off;
             break;
-        case Motor_Off: //MOTOR OFF STATE
+        case Off: //MOTOR OFF STATE
             if(button){
                 state = On_Hold;
+                LCD_DisplayString(1,"Turned On");
             }
             else{
-                state = Motor_Off;
+                state = Off;
             }
             break;
         case On_Hold: //ON_HOLD STATE
@@ -49,15 +50,16 @@ int MotorTick(int state){
                 state = On_Hold;
             }
             else{
-                state = Motor_On;
+                state = On;
             }
             break;
-        case Motor_On: //On STATE
+        case On: //On STATE
             if(button){
+                LCD_DisplayString(1,"Turned Off");
                 state = Off_Hold;
             }
             else{
-                state = Motor_On;
+                state = On;
             }
             break;
         case Off_Hold: //Off_Hold STATE
@@ -65,11 +67,11 @@ int MotorTick(int state){
                 state = Off_Hold;
             }
             else{
-                state = Motor_Off;
+                state = Off;
             }
             break;
         default:
-            state = Motor_Off;
+            state = Off;
             break;
     }
     switch (state) {
@@ -77,7 +79,8 @@ int MotorTick(int state){
             Ignition = 0x01;
             break;
         case Off_Hold:
-            Ignition =0x00;
+            Ignition = 0x00;
+            break;
         default:
             break;
     }
@@ -86,16 +89,13 @@ int MotorTick(int state){
 }
 
 int main(void){
-    //Joystick Register
+    //Joystick Register/Button Register
     DDRA = 0x00; PORTA = 0xFF;
     //LCD SCREEN Register
     DDRB = 0xFF; PORTB = 0x00;
     DDRD = 0xFF; PORTD = 0x00;
-    //Button Register
-    DDRC = 0x00; PORTC = 0xFF;
-    //adc init
+    
     adc_init();
-    //lcd init
     LCD_init();
     LCD_ClearScreen();
     
@@ -112,20 +112,22 @@ int main(void){
     //set the GCD
     unsigned long int GCD = tmpGCD;
     //Recalculate GCD periods for scheduler
-    unsigned long int Joystick_period = SMTick1_calc/GCD;
-    unsigned long int Motor_period = SMTick2_calc/GCD;
-    
-    //Joystick Task
-    task1.state = Joystick_Start;//Task initial state.
-    task1.period = Joystick_period;//Task Period.
-    task1.elapsedTime = Joystick_period;//Task current elapsed time.
-    task1.TickFct = &JoystickTick;//Function pointer for the tick.
-    
+    unsigned long int Motor_period = SMTick1_calc/GCD;
+    unsigned long int Joystick_period = SMTick2_calc/GCD;
     //Motor Task
     task1.state = Motor_Start;//Task initial state.
     task1.period = Motor_period;//Task Period.
     task1.elapsedTime = Motor_period;//Task current elapsed time.
     task1.TickFct = &MotorTick;//Function pointer for the tick.
+    
+    //Joystick Task
+    task2.state = Joystick_Start;//Task initial state.
+    task2.period = Joystick_period;//Task Period.
+    task2.elapsedTime = Joystick_period;//Task current elapsed time.
+    task2.TickFct = &JoystickTick;//Function pointer for the tick.
+    
+    TimerSet(GCD);
+    TimerOn();
    
     //while loop
     unsigned short i;
