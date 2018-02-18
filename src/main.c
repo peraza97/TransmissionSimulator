@@ -83,7 +83,7 @@ int MotorTick(int state){
 }
 
 //JOYSTICK TICK FUNCTION
-enum JoyStick_States {Joystick_Start, Wait, Input} joystick_State;
+enum JoyStick_States {Joystick_Start, Wait, Shift} joystick_State;
 
 int JoystickTick(int state){
     unsigned char stick = getJoystick();
@@ -93,16 +93,16 @@ int JoystickTick(int state){
             break;
         case Wait: //wait state
             if(Ignition && stick && !shifting){
-                state = Input; //go to input amd push it onto the queue
+                state = Shift; //go to input amd push it onto the queue
                 QueueEnqueue(shiftList,stick);
             }
             else{
                 state = Wait;
             }
             break;
-        case Input: // Input state
+        case Shift: // Input state
             if(Ignition && stick){
-                state = Input;
+                state = Shift;
             }
             else{
                 state = Wait;
@@ -119,7 +119,6 @@ int JoystickTick(int state){
 enum Shifter_States {Shifter_Start, Shifter_Wait, Shifter_Shift} shifter_State;
 
 int ShifterTick(int state){
-    
     switch (state) {
         case Shifter_Start: //start state
             state = Shifter_Wait;
