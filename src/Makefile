@@ -9,7 +9,7 @@ COMPILE    = avr-gcc -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
 all: clean build upload
 
 build:
-	$(COMPILE) -o $(FILENAME).elf $(FILENAME).c ./../headers/io.c joystick.c adc.c
+	$(COMPILE) -o $(FILENAME).elf *.c
 	avr-objcopy -j .text -j .data -O ihex $(FILENAME).elf $(FILENAME).hex
 	avr-size --format=avr --mcu=$(DEVICE) $(FILENAME).elf
 

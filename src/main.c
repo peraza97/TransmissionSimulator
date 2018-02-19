@@ -2,15 +2,15 @@
 #include <stdio.h>
 #include "./../headers/bit.h"
 #include "./../headers/timer.h"
-#include "./../headers/io.h"
 #include "./../headers/scheduler.h"
 #include "./../headers/adc.h"
 #include "./../headers/joystick.h"
 #include "./../headers/queue.h"
+#include "./../headers/nokia.h"
 
 //gobal variables
 //stores the display message for each gear
-unsigned char * speed[] = {"Gear 1", "Gear 2", "Gear 3","Gear 4"};
+unsigned char * speed[] = {"  Gear 1", "  Gear 2", "  Gear 3","  Gear 4"};
 //stores the currentGear of the tranmission
 unsigned char currentGear = 0x00;
 //tracks if the car is on or not
@@ -28,12 +28,12 @@ int MotorTick(int state){
     switch (state) {
         case Motor_Start: //MOTOR START STATE
             state = Off;
-            LCD_DisplayString(1,"Motor Off");
+            LCD_write_english_string(0,3,"  Motor off");
             break;
         case Off: //MOTOR OFF STATE
             if(button){
                 state = On_Hold;
-                LCD_DisplayString(1,speed[currentGear]);
+                LCD_write_english_string(0,3,speed[currentGear]);
             }
             else{
                 state = Off;
@@ -49,7 +49,7 @@ int MotorTick(int state){
             break;
         case On: //On STATE
             if(button){
-                LCD_DisplayString(1,"Motor Off");
+                LCD_write_english_string(0,3,"  Motor off");
                 state = Off_Hold;
             }
             else{
@@ -151,7 +151,7 @@ int ShifterTick(int state){
             else{
                 currentGear = currentGear > 0 ? currentGear - 1: 0;
             }
-            LCD_DisplayString(1,speed[currentGear]);
+            LCD_write_english_string(0,3,speed[currentGear]);
             break;
         default:
             break;
@@ -167,12 +167,12 @@ int main(void){
     //Joystick Register/Button Register
     DDRA = 0x00; PORTA = 0xFF;
     //LCD SCREEN Register
-    DDRB = 0xFF; PORTB = 0x00;
-    DDRD = 0xFF; PORTD = 0x00;
+    DDRC = 0xFF; PORTC = 0x00;
     
     adc_init();
+    //LCD STUFF
     LCD_init();
-    LCD_ClearScreen();
+    LCD_clear();
     
     //MY QUEUE
     shiftList = QueueInit(4);
