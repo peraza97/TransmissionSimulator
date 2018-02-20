@@ -28,12 +28,10 @@ int MotorTick(int state){
     switch (state) {
         case Motor_Start: //MOTOR START STATE
             state = Off;
-            LCD_write_english_string(0,3,"  Motor off");
             break;
         case Off: //MOTOR OFF STATE
             if(button){
                 state = On_Hold;
-                LCD_write_english_string(0,3,speed[currentGear]);
             }
             else{
                 state = Off;
@@ -49,7 +47,6 @@ int MotorTick(int state){
             break;
         case On: //On STATE
             if(button){
-                LCD_write_english_string(0,3,"  Motor off");
                 state = Off_Hold;
             }
             else{
@@ -126,7 +123,6 @@ int ShifterTick(int state){
         case Shifter_Wait: //wait states
             if(!QueueIsEmpty(shiftList)){
                 state = Shifter_Shift;
-                shifting = 1;
             }
             else{
                 state = Shifter_Wait;
@@ -134,14 +130,14 @@ int ShifterTick(int state){
             break;
         case Shifter_Shift: //shifting
             state = Shifter_Wait;
-            shifting = 0;
             break;
         default:
             state = Shifter_Wait;
             break;
     }
     switch (state) {
-        case Shifter_Shift: ;
+        case Shifter_Shift:;
+            shifting = 1;
             unsigned char g = QueueDequeue(shiftList);
             //call some function to get to that gear
             if(g == 1){
@@ -151,12 +147,72 @@ int ShifterTick(int state){
             else{
                 currentGear = currentGear > 0 ? currentGear - 1: 0;
             }
-            LCD_write_english_string(0,3,speed[currentGear]);
+            break;
+        case Shifter_Wait:
+            shifting = 0;
             break;
         default:
             break;
     }
     
+    return state;
+}
+
+enum LCD_States {LCD_Start, LCD_Off, LCD_display, LCD_shift} lcd_state;
+int LCDTick(int state){
+    //transition
+    switch (state) {
+        case LCD_Start: //LCD Start
+            state = LCD_Off;
+            break;
+        case LCD_Off: //LCD Off
+            if(Ignition){
+                LCD_clear();
+                state = LCD_display;
+            }
+            else{
+                state = LCD_Off;
+            }
+            break;
+        case LCD_display: //LCD Display
+            if(Ignition && !shifting){
+                state = LCD_display;
+            }
+            else if(Ignition && shifting){
+                LCD_clear();
+                state = LCD_shift;
+            }
+            else{
+                LCD_clear();
+                state = LCD_Off;
+            }
+            break;
+        case LCD_shift: //LCD Shifting
+            if(shifting){
+                state = LCD_shift;
+            }
+            else{
+                LCD_clear();
+                state = LCD_display;
+            }
+            break;
+        default:
+            state = LCD_Off;
+            break;
+    }
+    switch (state) {
+        case LCD_Off: //LCD off
+            LCD_write_english_string(0,3,"  Motor off");
+            break;
+        case LCD_display: //LCD display
+            LCD_write_english_string(0,3,speed[currentGear]);
+            break;
+        case LCD_shift: //LCD shift
+            LCD_write_english_string(0,3,"Currently Shifting");
+            break;
+        default:
+            break;
+    }
     return state;
 }
 
@@ -177,24 +233,27 @@ int main(void){
     //MY QUEUE
     shiftList = QueueInit(4);
     
-    static task task1, task2, task3;
-    task *tasks[] = {&task1,&task2, &task3};
+    static task task1, task2, task3, task4;
+    task *tasks[] = {&task1,&task2, &task3, &task4};
     const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
     
     // Period for the tasks
     unsigned long int SMTick1_calc = 50;
     unsigned long int SMTick2_calc = 100;
     unsigned long int SMTick3_calc = 100;
+    unsigned long int SMTick4_calc = 50;
     //Calculating GCD
     unsigned long int tmpGCD = 1; // Normally initialized to 1
     tmpGCD = findGCD(SMTick1_calc, SMTick2_calc);
     tmpGCD = findGCD(tmpGCD, SMTick3_calc);
+    tmpGCD = findGCD(tmpGCD, SMTick4_calc);
     //set the GCD
     unsigned long int GCD = tmpGCD;
     //Recalculate GCD periods for scheduler
     unsigned long int Motor_period = SMTick1_calc/GCD;
     unsigned long int Joystick_period = SMTick2_calc/GCD;
     unsigned long int Shifter_period = SMTick3_calc/GCD;
+    unsigned long int LCD_period = SMTick4_calc/GCD;
     //Motor Task
     task1.state = Motor_Start;//Task initial state.
     task1.period = Motor_period;//Task Period.
@@ -212,6 +271,13 @@ int main(void){
     task3.period = Shifter_period;//Task Period.
     task3.elapsedTime = Shifter_period;//Task current elapsed time.
     task3.TickFct = &ShifterTick;//Function pointer for the tick.
+    
+    //LCD Task
+    task4.state = LCD_Start;//Task initial state.
+    task4.period = LCD_period;//Task Period.
+    task4.elapsedTime = LCD_period;//Task current elapsed time.
+    task4.TickFct = &LCDTick;//Function pointer for the tick.
+    
     
     TimerSet(GCD);
     TimerOn();

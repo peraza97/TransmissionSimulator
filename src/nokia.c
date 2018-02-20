@@ -182,12 +182,22 @@ void LCD_write_char(unsigned char c)
 
 void LCD_write_english_string(unsigned char X,unsigned char Y,char *s)
 {
-    LCD_clear();
     LCD_set_XY(X,Y);
     while (*s)
     {
         LCD_write_char(*s);
         s++;
     }
+}
+
+void delay_ms(int miliSec) //for 8 Mhz crystal
+
+{
+    int i,j;
+    for(i=0;i<miliSec;i++)
+        for(j=0;j<775;j++)
+        {
+            asm("nop");
+        }
 }
 
