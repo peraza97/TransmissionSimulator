@@ -2,7 +2,7 @@
 #include <util/delay.h>
 #include "./../headers/nokia.h"
 
-#define F_CPU 8000000UL
+//#define F_CPU 8000000UL
 
 
 #define LCD_RST_set  PORTC |=  (1<<3)    //external reset input
@@ -189,15 +189,3 @@ void LCD_write_english_string(unsigned char X,unsigned char Y,char *s)
         s++;
     }
 }
-
-void delay_ms(int miliSec) //for 8 Mhz crystal
-
-{
-    int i,j;
-    for(i=0;i<miliSec;i++)
-        for(j=0;j<775;j++)
-        {
-            asm("nop");
-        }
-}
-

@@ -1,4 +1,5 @@
 #include <avr/io.h>
+#include <util/delay.h>
 #include <stdio.h>
 #include "./../headers/bit.h"
 #include "./../headers/timer.h"
@@ -90,8 +91,14 @@ int JoystickTick(int state){
             break;
         case Wait: //wait state
             if(Ignition && stick && !shifting){
-                state = Shift; //go to input amd push it onto the queue
+                //check if you can even shift
+                if((stick == 1 && currentGear< 3) || (stick == 2 && currentGear > 0)){
+                state = Shift;
                 QueueEnqueue(shiftList,stick);
+                }
+                else{
+                    state = Wait;
+                }
             }
             else{
                 state = Wait;
@@ -136,19 +143,19 @@ int ShifterTick(int state){
             break;
     }
     switch (state) {
-        case Shifter_Shift:;
+        case Shifter_Shift:; //shifting state
             shifting = 1;
             unsigned char g = QueueDequeue(shiftList);
             //call some function to get to that gear
             if(g == 1){
-                currentGear = currentGear >= 3 ? 3: currentGear + 1;
+                currentGear = currentGear + 1;
                 
             }
             else{
-                currentGear = currentGear > 0 ? currentGear - 1: 0;
+                currentGear = currentGear - 1;
             }
             break;
-        case Shifter_Wait:
+        case Shifter_Wait: //waiting state
             shifting = 0;
             break;
         default:
@@ -209,6 +216,9 @@ int LCDTick(int state){
             break;
         case LCD_shift: //LCD shift
             LCD_write_english_string(0,3,"Currently Shifting");
+            for(int i = 0; i < 200; ++i){
+                _delay_ms(10);
+            }
             break;
         default:
             break;
