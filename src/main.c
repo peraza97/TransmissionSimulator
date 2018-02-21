@@ -8,6 +8,12 @@
 #include "./../headers/joystick.h"
 #include "./../headers/queue.h"
 #include "./../headers/nokia.h"
+#include "./../headers/servo.h"
+
+
+#define right 2200
+#define mid  1500
+#define left 1000
 
 //gobal variables
 //stores the display message for each gear
@@ -135,7 +141,7 @@ int ShifterTick(int state){
                 state = Shifter_Wait;
             }
             break;
-        case Shifter_Shift: //shifting
+        case Shifter_Shift: //shift motors
             state = Shifter_Wait;
             break;
         default:
@@ -143,16 +149,20 @@ int ShifterTick(int state){
             break;
     }
     switch (state) {
-        case Shifter_Shift:; //shifting state
+        case Shifter_Shift: ;
             shifting = 1;
             unsigned char g = QueueDequeue(shiftList);
-            //call some function to get to that gear
             if(g == 1){
                 currentGear = currentGear + 1;
-                
             }
             else{
                 currentGear = currentGear - 1;
+            }
+            if(currentGear%2 == 0){
+                turnServo1(right);
+            }
+            else{
+                turnServo1(left);
             }
             break;
         case Shifter_Wait: //waiting state
@@ -216,9 +226,6 @@ int LCDTick(int state){
             break;
         case LCD_shift: //LCD shift
             LCD_write_english_string(0,3,"Currently Shifting");
-            for(int i = 0; i < 200; ++i){
-                _delay_ms(10);
-            }
             break;
         default:
             break;
@@ -234,7 +241,12 @@ int main(void){
     DDRA = 0x00; PORTA = 0xFF;
     //LCD SCREEN Register
     DDRC = 0xFF; PORTC = 0x00;
+    //SERVOS will be on portB
+    DDRB = 0xFF; PORTB = 0x00;
     
+    //init servo
+    servo1Init();
+    //init adc
     adc_init();
     //LCD STUFF
     LCD_init();
