@@ -11,9 +11,9 @@
 #include "./../headers/servo.h"
 
 
-#define right 2200
-#define mid  1500
-#define left 1000
+#define left 2600
+#define mid  1750
+#define right 1000
 
 //gobal variables
 //stores the display message for each gear
@@ -126,20 +126,25 @@ int JoystickTick(int state){
 }
 
 //SHIFTER TICK FUNCTION
-enum Shifter_States {Shifter_Start, Shifter_Wait, Shifter_Shift} shifter_State;
-
+enum Shifter_States {Shifter_Start, Shifter_Wait, Shifter_Set, Shifter_Shift} shifter_State;
 int ShifterTick(int state){
+    static unsigned char g;
     switch (state) {
         case Shifter_Start: //start state
             state = Shifter_Wait;
+            g = 100;
             break;
         case Shifter_Wait: //wait states
             if(!QueueIsEmpty(shiftList)){
-                state = Shifter_Shift;
+                state = Shifter_Set;
+                g = QueueDequeue(shiftList);
             }
             else{
                 state = Shifter_Wait;
             }
+            break;
+        case Shifter_Set: //set shift to 1
+            state = Shifter_Shift;
             break;
         case Shifter_Shift: //shift motors
             state = Shifter_Wait;
@@ -149,19 +154,36 @@ int ShifterTick(int state){
             break;
     }
     switch (state) {
-        case Shifter_Shift: ;
+        case Shifter_Set:; //set state state
             shifting = 1;
-            unsigned char g = QueueDequeue(shiftList);
+            break;
+        case Shifter_Shift: ; //shift state
+            turnServo1(mid);
+            turnServo2(mid);
             if(g == 1){
                 currentGear = currentGear + 1;
             }
             else{
                 currentGear = currentGear - 1;
             }
-            if(currentGear%2 == 0){
+            //set to position 1
+            if(currentGear == 0){
+                turnServo2(left);
                 turnServo1(right);
             }
-            else{
+            //set to position 2
+            else if(currentGear == 1){
+                turnServo2(right);
+                turnServo1(right);
+            }
+            //set to position 3
+            else if(currentGear == 2){
+                turnServo2(left);
+                turnServo1(left);
+            }
+            //set to position 4
+            else if(currentGear == 3){
+                turnServo2(right);
                 turnServo1(left);
             }
             break;
@@ -175,6 +197,7 @@ int ShifterTick(int state){
     return state;
 }
 
+//LCD TASK
 enum LCD_States {LCD_Start, LCD_Off, LCD_display, LCD_shift} lcd_state;
 int LCDTick(int state){
     //transition
@@ -245,7 +268,7 @@ int main(void){
     DDRB = 0xFF; PORTB = 0x00;
     
     //init servo
-    servo1Init();
+    servosInit();
     //init adc
     adc_init();
     //LCD STUFF
