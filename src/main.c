@@ -11,9 +11,13 @@
 #include "./../headers/servo.h"
 
 
-#define left 2600
-#define mid  1750
-#define right 1000
+#define left1 2500
+#define mid1  1500
+#define right1 600
+
+#define left2 2200
+#define mid2  1300
+#define right2 500
 
 //gobal variables
 //stores the display message for each gear
@@ -158,8 +162,8 @@ int ShifterTick(int state){
             shifting = 1;
             break;
         case Shifter_Shift: ; //shift state
-            turnServo1(mid);
-            turnServo2(mid);
+            turnServo2(mid2);
+            turnServo1(mid1);
             if(g == 1){
                 currentGear = currentGear + 1;
             }
@@ -168,23 +172,23 @@ int ShifterTick(int state){
             }
             //set to position 1
             if(currentGear == 0){
-                turnServo2(left);
-                turnServo1(right);
+                turnServo2(left2);
+                turnServo1(right1);
             }
             //set to position 2
             else if(currentGear == 1){
-                turnServo2(right);
-                turnServo1(right);
+                turnServo2(right2);
+                turnServo1(right1);
             }
             //set to position 3
             else if(currentGear == 2){
-                turnServo2(left);
-                turnServo1(left);
+                turnServo2(left2);
+                turnServo1(left1);
             }
             //set to position 4
             else if(currentGear == 3){
-                turnServo2(right);
-                turnServo1(left);
+                turnServo2(right2);
+                turnServo1(left1);
             }
             break;
         case Shifter_Wait: //waiting state
