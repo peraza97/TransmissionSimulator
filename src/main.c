@@ -9,6 +9,7 @@
 #include "./../headers/queue.h"
 #include "./../headers/nokia.h"
 #include "./../headers/servo.h"
+#include "./../headers/motor.h"
 
 
 #define left1 2500
@@ -79,9 +80,11 @@ int MotorTick(int state){
     switch (state) {
         case On_Hold:
             Ignition = 0x01;
+            PORTB |= (0x01 << 1);
             break;
         case Off_Hold:
             Ignition = 0x00;
+            PORTB &= ~(0x01 << 1);
             break;
         default:
             break;
@@ -174,21 +177,25 @@ int ShifterTick(int state){
             if(currentGear == 0){
                 turnServo2(left2);
                 turnServo1(right1);
+                motorGear1();
             }
             //set to position 2
             else if(currentGear == 1){
                 turnServo2(right2);
                 turnServo1(right1);
+                motorGear2();
             }
             //set to position 3
             else if(currentGear == 2){
                 turnServo2(left2);
                 turnServo1(left1);
+                motorGear3();
             }
             //set to position 4
             else if(currentGear == 3){
                 turnServo2(right2);
                 turnServo1(left1);
+                motorGear4();
             }
             break;
         case Shifter_Wait: //waiting state
@@ -273,6 +280,14 @@ int main(void){
     
     //init servo
     servosInit();
+    //init motor
+    motorInit();
+    
+    //TODO
+    set the motor to the proper speed
+    set the servos to the proper location
+    
+    
     //init adc
     adc_init();
     //LCD STUFF
