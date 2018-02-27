@@ -13,22 +13,11 @@
 #include "./../headers/motor.h"
 
 
-//pragmas for servo1 positions
-#define servo1_left_pos 2500
-#define servo1_mid_pos  1500
-#define servo1_right_pos 600
-//pragmas for servo2 positions
-#define servo2_left_pos 2200
-#define servo2_mid_pos  1300
-#define servo2_right_pos 500
+/*gobal variables */
 
-//pragmas for motor duty cycle 
-#define motor_gear1_speed 100
-#define motor_gear2_speed 128
-#define motor_gear3_speed 200
-#define motor_gear4_speed 255
+//memory adress storing the current gear in eeprom
+#define EEPROM_ADDRESS 0x00
 
-//gobal variables
 //stores the display message for each gear
 unsigned char * gears[] = {"  Gear 1", "  Gear 2", "  Gear 3","  Gear 4"};
 //stores the currentGear of the tranmission
@@ -51,6 +40,7 @@ int MotorTick(int state){
             break;
         case Off: //MOTOR OFF STATE
             if(button){
+                updateMotor(currentGear);
                 state = On_Hold;
             }
             else{
@@ -180,33 +170,14 @@ int ShifterTick(int state){
             else{
                 currentGear = currentGear - 1;
             }
-            //set servos to the middle position
-            turnServo2(servo2_mid_pos);
-            turnServo1(servo1_mid_pos);
-            //set to position 1
-            if(currentGear == 0){
-                turnServo2(servo2_left_pos);
-                turnServo1(servo1_right_pos);
-                motorChangeGear(motor_gear1_speed);
-            }
-            //set to position 2
-            else if(currentGear == 1){
-                turnServo2(servo2_right_pos);
-                turnServo1(servo1_right_pos);
-                motorChangeGear(motor_gear2_speed);
-            }
-            //set to position 3
-            else if(currentGear == 2){
-                turnServo2(servo2_left_pos);
-                turnServo1(servo1_left_pos);
-                motorChangeGear(motor_gear3_speed);
-            }
-            //set to position 4
-            else if(currentGear == 3){
-                turnServo2(servo2_right_pos);
-                turnServo1(servo1_left_pos);
-                motorChangeGear(motor_gear4_speed);
-            }
+            //write to this eeprom
+            eeprom_write_byte((uint8_t*)EEPROM_ADDRESS, currentGear);
+            //set servos to middle position
+            updateServos(4);
+            //update the servos
+            updateServos(currentGear);
+            //update motors
+            updateMotor(currentGear);
             break;
         case Shifter_Wait: //waiting state
             is_shifting = 0;
@@ -293,10 +264,19 @@ int main(void){
     //init motor
     motorInit();
     
-    //TODO
-    set the motor to the proper speed
-    set the servos to the proper location
+    //get the value in eeprom
+    uint8_t ByteOfData;
+    ByteOfData = eeprom_read_byte((uint8_t*)EEPROM_ADDRESS);
     
+    if(ByteOfData == 0 || ByteOfData ==1 ||  ByteOfData ==2 || ByteOfData ==3){
+        currentGear = ByteOfData;
+    }
+    else{
+        currentGear = 0;
+    }
+    //update my servos and motors first thing
+    updateServos(4);
+    updateServos(currentGear);
     
     //init adc
     adc_init();
