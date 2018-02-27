@@ -1,6 +1,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <stdio.h>
+#include <avr/eeprom.h>
 #include "./../headers/bit.h"
 #include "./../headers/timer.h"
 #include "./../headers/scheduler.h"
@@ -12,23 +13,30 @@
 #include "./../headers/motor.h"
 
 
-#define left1 2500
-#define mid1  1500
-#define right1 600
+//pragmas for servo1 positions
+#define servo1_left_pos 2500
+#define servo1_mid_pos  1500
+#define servo1_right_pos 600
+//pragmas for servo2 positions
+#define servo2_left_pos 2200
+#define servo2_mid_pos  1300
+#define servo2_right_pos 500
 
-#define left2 2200
-#define mid2  1300
-#define right2 500
+//pragmas for motor duty cycle 
+#define motor_gear1_speed 100
+#define motor_gear2_speed 128
+#define motor_gear3_speed 200
+#define motor_gear4_speed 255
 
 //gobal variables
 //stores the display message for each gear
-unsigned char * speed[] = {"  Gear 1", "  Gear 2", "  Gear 3","  Gear 4"};
+unsigned char * gears[] = {"  Gear 1", "  Gear 2", "  Gear 3","  Gear 4"};
 //stores the currentGear of the tranmission
 unsigned char currentGear = 0x00;
 //tracks if the car is on or not
-unsigned char Ignition = 0x00;
+unsigned char ignition = 0x00;
 //am i currently shifting
-unsigned char shifting = 0x00;
+unsigned char is_shifting = 0x00;
 
 Queue shiftList;
 
@@ -79,11 +87,11 @@ int MotorTick(int state){
     }
     switch (state) {
         case On_Hold:
-            Ignition = 0x01;
+            ignition = 0x01;
             PORTB |= (0x01 << 1);
             break;
         case Off_Hold:
-            Ignition = 0x00;
+            ignition = 0x00;
             PORTB &= ~(0x01 << 1);
             break;
         default:
@@ -103,7 +111,7 @@ int JoystickTick(int state){
             state = Wait;
             break;
         case Wait: //wait state
-            if(Ignition && stick && !shifting){
+            if(ignition && stick && !is_shifting){
                 //check if you can even shift
                 if((stick == 1 && currentGear< 3) || (stick == 2 && currentGear > 0)){
                 state = Shift;
@@ -118,7 +126,7 @@ int JoystickTick(int state){
             }
             break;
         case Shift: // Input state
-            if(Ignition && stick){
+            if(ignition && stick){
                 state = Shift;
             }
             else{
@@ -162,44 +170,46 @@ int ShifterTick(int state){
     }
     switch (state) {
         case Shifter_Set:; //set state state
-            shifting = 1;
+            is_shifting = 1;
             break;
         case Shifter_Shift: ; //shift state
-            turnServo2(mid2);
-            turnServo1(mid1);
+            //update current gear
             if(g == 1){
                 currentGear = currentGear + 1;
             }
             else{
                 currentGear = currentGear - 1;
             }
+            //set servos to the middle position
+            turnServo2(servo2_mid_pos);
+            turnServo1(servo1_mid_pos);
             //set to position 1
             if(currentGear == 0){
-                turnServo2(left2);
-                turnServo1(right1);
-                motorGear1();
+                turnServo2(servo2_left_pos);
+                turnServo1(servo1_right_pos);
+                motorChangeGear(motor_gear1_speed);
             }
             //set to position 2
             else if(currentGear == 1){
-                turnServo2(right2);
-                turnServo1(right1);
-                motorGear2();
+                turnServo2(servo2_right_pos);
+                turnServo1(servo1_right_pos);
+                motorChangeGear(motor_gear2_speed);
             }
             //set to position 3
             else if(currentGear == 2){
-                turnServo2(left2);
-                turnServo1(left1);
-                motorGear3();
+                turnServo2(servo2_left_pos);
+                turnServo1(servo1_left_pos);
+                motorChangeGear(motor_gear3_speed);
             }
             //set to position 4
             else if(currentGear == 3){
-                turnServo2(right2);
-                turnServo1(left1);
-                motorGear4();
+                turnServo2(servo2_right_pos);
+                turnServo1(servo1_left_pos);
+                motorChangeGear(motor_gear4_speed);
             }
             break;
         case Shifter_Wait: //waiting state
-            shifting = 0;
+            is_shifting = 0;
             break;
         default:
             break;
@@ -217,7 +227,7 @@ int LCDTick(int state){
             state = LCD_Off;
             break;
         case LCD_Off: //LCD Off
-            if(Ignition){
+            if(ignition){
                 LCD_clear();
                 state = LCD_display;
             }
@@ -226,10 +236,10 @@ int LCDTick(int state){
             }
             break;
         case LCD_display: //LCD Display
-            if(Ignition && !shifting){
+            if(ignition && !is_shifting){
                 state = LCD_display;
             }
-            else if(Ignition && shifting){
+            else if(ignition && is_shifting){
                 LCD_clear();
                 state = LCD_shift;
             }
@@ -239,7 +249,7 @@ int LCDTick(int state){
             }
             break;
         case LCD_shift: //LCD Shifting
-            if(shifting){
+            if(is_shifting){
                 state = LCD_shift;
             }
             else{
@@ -256,7 +266,7 @@ int LCDTick(int state){
             LCD_write_english_string(0,3,"  Motor off");
             break;
         case LCD_display: //LCD display
-            LCD_write_english_string(0,3,speed[currentGear]);
+            LCD_write_english_string(0,3,gears[currentGear]);
             break;
         case LCD_shift: //LCD shift
             LCD_write_english_string(0,3,"Currently Shifting");

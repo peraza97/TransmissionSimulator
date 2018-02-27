@@ -5,6 +5,8 @@ void servosInit();
 void turnServo1(unsigned long int);
 void turnServo2(unsigned long int);
 
+void updateServos(unsigned char x);
+
 
 
 
