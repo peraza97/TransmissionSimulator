@@ -18,7 +18,9 @@
 //memory adress storing the current gear in eeprom
 #define EEPROM_ADDRESS 0x00
 
-enum TRANSMISSION {AUTOMATIC, MANUAL} transmission;
+//transmission
+unsigned char * mode[] = {" Auto "," Manual "};
+unsigned char transmission = 0x00;
 //stores the display message for each gear
 unsigned char * gears[] = {"  Gear 1", "  Gear 2", "  Gear 3","  Gear 4"};
 //stores the currentGear of the tranmission
@@ -92,43 +94,124 @@ int MotorTick(int state){
     return state;
 }
 
+//Transmission TICK FUNCTION
+enum Transmission_States {Tran_Start, Tran_Auto, Tran_Auto_Hold, Tran_Manual, Tran_Manual_Hold} T_State;
+
+int TransmissionToggleTick(int state){
+    unsigned char toggle = ~PINA & 0x08;
+    switch (state) {
+        case Tran_Start:
+            state = Tran_Auto;
+            break;
+        case Tran_Auto: //tran auto
+            if(toggle && !ignition){
+                transmission = 1;
+                state = Tran_Manual_Hold;
+            }
+            else{
+                state = Tran_Auto;
+            }
+            break;
+        case Tran_Manual_Hold: //tran manual hold
+            if(toggle){
+                state = Tran_Manual_Hold;
+            }
+            else {
+                state = Tran_Manual;
+            }
+            break;
+        case Tran_Manual: //tran manual
+            if(toggle && !ignition){
+                transmission = 0;
+                currentGear = 0;
+                updateServos(4);
+                updateServos(currentGear);
+                state = Tran_Auto_Hold;
+            }
+            else{
+                state = Tran_Manual;
+            }
+            break;
+        case Tran_Auto_Hold: //tran auto hold
+            if(toggle){
+                state = Tran_Auto_Hold;
+            }
+            else{
+                state = Tran_Auto;
+            }
+            break;
+        default:
+            state = Tran_Start;
+            break;
+    }
+ 
+    return state;
+}
+
 //JOYSTICK TICK FUNCTION
-enum JoyStick_States {Joystick_Start, Wait, Shift} joystick_State;
+enum JoyStick_States {Joystick_Start, Joystick_Manual, Joystick_Wait, Auto_Shift} joystick_State;
 
 int JoystickTick(int state){
     unsigned char stick = getJoystick();
     switch (state) {
         case Joystick_Start: //start state
-            state = Wait;
+            state = Joystick_Wait;
             break;
-        case Wait: //wait state
-            if(ignition && stick && !is_shifting){
-                //check if you can even shift
-                if((stick == 1 && currentGear< 3) || (stick == 2 && currentGear > 0)){
-                state = Shift;
-                QueueEnqueue(shiftList,stick);
+        case Joystick_Wait: //wait state
+            if(transmission == 0){//automatic transmission
+                if(ignition && stick && !is_shifting){
+                    //check if you can even shift
+                    if((stick == 1 && currentGear< 3) || (stick == 2 && currentGear > 0)){
+                    state = Auto_Shift;
+                    QueueEnqueue(shiftList,stick);
+                    }
+                    else{
+                        state = Joystick_Wait;
+                    }
+                }
+            }
+            else if(transmission == 1){//manual transmission
+                if(stick){
+                    state = Joystick_Manual;
                 }
                 else{
-                    state = Wait;
+                    state = Joystick_Wait;
                 }
             }
             else{
-                state = Wait;
+                state = Joystick_Wait;
             }
             break;
-        case Shift: // Input state
+        case Auto_Shift: // Input state
             if(ignition && stick){
-                state = Shift;
+                state = Auto_Shift;
             }
             else{
-                state = Wait;
+                state = Joystick_Wait;
+            }
+            break;
+        case Joystick_Manual:// Manual state
+            if(stick){
+                state = Joystick_Manual;
+            }
+            else{
+                state = Joystick_Wait;
             }
             break;
         default:
-            state = Wait;
+            state = Joystick_Wait;
             break;
     }
     return state;
+    
+    switch (state) {
+        case Joystick_Manual: //update the motors directly
+
+            break;
+            
+        default:
+            break;
+    }
 }
 
 //SHIFTER TICK FUNCTION
@@ -235,9 +318,11 @@ int LCDTick(int state){
     }
     switch (state) {
         case LCD_Off: //LCD off
-            LCD_write_english_string(0,3,"  Motor off");
+            LCD_write_english_string(0,3,"   Motor off");
+            LCD_write_english_string(0,5, "                            ");
+            LCD_write_english_string(20,5, mode[transmission]);
             break;
-        case LCD_display: //LCD display
+        case LCD_display: ; //LCD display
             LCD_write_english_string(0,3,gears[currentGear]);
             break;
         case LCD_shift: //LCD shift
@@ -288,50 +373,59 @@ int main(void){
     //MY QUEUE
     shiftList = QueueInit(4);
     
-    static task task1, task2, task3, task4;
-    task *tasks[] = {&task1,&task2, &task3, &task4};
+    static task task1, task2, task3, task4, task5;
+    task *tasks[] = {&task1,&task2, &task3, &task4, &task5};
     const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
     
     // Period for the tasks
     unsigned long int SMTick1_calc = 50;
-    unsigned long int SMTick2_calc = 100;
+    unsigned long int SMTick2_calc = 50;
     unsigned long int SMTick3_calc = 100;
-    unsigned long int SMTick4_calc = 50;
+    unsigned long int SMTick4_calc = 100;
+    unsigned long int SMTick5_calc = 50;
     //Calculating GCD
     unsigned long int tmpGCD = 1; // Normally initialized to 1
     tmpGCD = findGCD(SMTick1_calc, SMTick2_calc);
     tmpGCD = findGCD(tmpGCD, SMTick3_calc);
     tmpGCD = findGCD(tmpGCD, SMTick4_calc);
+    tmpGCD = findGCD(tmpGCD, SMTick5_calc);
     //set the GCD
     unsigned long int GCD = tmpGCD;
     //Recalculate GCD periods for scheduler
     unsigned long int Motor_period = SMTick1_calc/GCD;
-    unsigned long int Joystick_period = SMTick2_calc/GCD;
-    unsigned long int Shifter_period = SMTick3_calc/GCD;
-    unsigned long int LCD_period = SMTick4_calc/GCD;
+    unsigned long int Transmission_period = SMTick2_calc/GCD;
+    unsigned long int Joystick_period = SMTick3_calc/GCD;
+    unsigned long int Shifter_period = SMTick4_calc/GCD;
+    unsigned long int LCD_period = SMTick5_calc/GCD;
     //Motor Task
     task1.state = Motor_Start;//Task initial state.
     task1.period = Motor_period;//Task Period.
     task1.elapsedTime = Motor_period;//Task current elapsed time.
     task1.TickFct = &MotorTick;//Function pointer for the tick.
     
+    //Transmission Task
+    task2.state = Tran_Start;//Task initial state.
+    task2.period = Transmission_period;//Task Period.
+    task2.elapsedTime = Transmission_period;//Task current elapsed time.
+    task2.TickFct = &TransmissionToggleTick;//Function pointer for the tick.
+    
     //Joystick Task
-    task2.state = Joystick_Start;//Task initial state.
-    task2.period = Joystick_period;//Task Period.
-    task2.elapsedTime = Joystick_period;//Task current elapsed time.
-    task2.TickFct = &JoystickTick;//Function pointer for the tick.
+    task3.state = Joystick_Start;//Task initial state.
+    task3.period = Joystick_period;//Task Period.
+    task3.elapsedTime = Joystick_period;//Task current elapsed time.
+    task3.TickFct = &JoystickTick;//Function pointer for the tick.
     
     //Shifter Task
-    task3.state = Shifter_Start;//Task initial state.
-    task3.period = Shifter_period;//Task Period.
-    task3.elapsedTime = Shifter_period;//Task current elapsed time.
-    task3.TickFct = &ShifterTick;//Function pointer for the tick.
+    task4.state = Shifter_Start;//Task initial state.
+    task4.period = Shifter_period;//Task Period.
+    task4.elapsedTime = Shifter_period;//Task current elapsed time.
+    task4.TickFct = &ShifterTick;//Function pointer for the tick.
     
     //LCD Task
-    task4.state = LCD_Start;//Task initial state.
-    task4.period = LCD_period;//Task Period.
-    task4.elapsedTime = LCD_period;//Task current elapsed time.
-    task4.TickFct = &LCDTick;//Function pointer for the tick.
+    task5.state = LCD_Start;//Task initial state.
+    task5.period = LCD_period;//Task Period.
+    task5.elapsedTime = LCD_period;//Task current elapsed time.
+    task5.TickFct = &LCDTick;//Function pointer for the tick.
     
     
     TimerSet(GCD);
