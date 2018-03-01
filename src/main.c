@@ -33,7 +33,7 @@ Queue shiftList;
 enum Motor_States {Motor_Start, Off, On, On_Hold, Off_Hold} motor_State;
 
 int MotorTick(int state){
-    unsigned char button = ~PINA & 0x02;
+    unsigned char button = ~PINA & 0x04;
     switch (state) {
         case Motor_Start: //MOTOR START STATE
             state = Off;
@@ -167,7 +167,7 @@ int ShifterTick(int state){
             if(g == 1){
                 currentGear = currentGear + 1;
             }
-            else{
+            else if(g == 2){
                 currentGear = currentGear - 1;
             }
             //write to this eeprom
