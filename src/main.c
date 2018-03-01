@@ -18,6 +18,7 @@
 //memory adress storing the current gear in eeprom
 #define EEPROM_ADDRESS 0x00
 
+enum TRANSMISSION {AUTOMATIC, MANUAL} transmission;
 //stores the display message for each gear
 unsigned char * gears[] = {"  Gear 1", "  Gear 2", "  Gear 3","  Gear 4"};
 //stores the currentGear of the tranmission
@@ -240,7 +241,7 @@ int LCDTick(int state){
             LCD_write_english_string(0,3,gears[currentGear]);
             break;
         case LCD_shift: //LCD shift
-            LCD_write_english_string(0,3,"Currently Shifting");
+            LCD_write_english_string(0,3,"  Currently\n    Shifting");
             break;
         default:
             break;
