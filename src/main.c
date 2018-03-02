@@ -107,6 +107,7 @@ int TransmissionToggleTick(int state){
             if(toggle && !ignition){
                 transmission = 1;
                 state = Tran_Manual_Hold;
+                updateServos(4);
             }
             else{
                 state = Tran_Auto;
@@ -153,14 +154,15 @@ enum JoyStick_States {Joystick_Start, Joystick_Manual, Joystick_Wait, Auto_Shift
 
 int JoystickTick(int state){
     unsigned char stick = getJoystick();
+    unsigned char clutchY = ~PINA & 0x20;
+    unsigned char clutchX = ~PINA & 0x10;
     switch (state) {
         case Joystick_Start: //start state
             state = Joystick_Wait;
             break;
         case Joystick_Wait: //wait state
-            if(transmission == 0){//automatic transmission
+            if(transmission == 0){                  //automatic transmission
                 if(ignition && stick && !is_shifting){
-                    //check if you can even shift
                     if((stick == 1 && currentGear< 3) || (stick == 2 && currentGear > 0)){
                     state = Auto_Shift;
                     QueueEnqueue(shiftList,stick);
@@ -169,16 +171,20 @@ int JoystickTick(int state){
                         state = Joystick_Wait;
                     }
                 }
-            }
-            else if(transmission == 1){//manual transmission
-                if(stick){
-                    state = Joystick_Manual;
-                }
                 else{
                     state = Joystick_Wait;
                 }
             }
-            else{
+            else if(transmission == 1){             //manual transmission
+                if((clutchY || clutchX) && ignition){
+                    state = Joystick_Manual;
+                }
+                else{
+                    LCD_write_english_string(0,0," ");
+                    state = Joystick_Wait;
+                }
+            }
+            else{                                 // should never hit here
                 state = Joystick_Wait;
             }
             break;
@@ -191,6 +197,7 @@ int JoystickTick(int state){
             }
             break;
         case Joystick_Manual:// Manual state
+            //LCD_write_english_string(0,0," here");
             if(stick){
                 state = Joystick_Manual;
             }
@@ -202,16 +209,23 @@ int JoystickTick(int state){
             state = Joystick_Wait;
             break;
     }
-    return state;
-    
     switch (state) {
         case Joystick_Manual: //update the motors directly
-
+            if(clutchY){
+                LCD_write_english_string(0,0,"Y");
+                OCR3A = ICR3 - ((adc_read(0) * 1.86) + 600);
+            }
+            else if(clutchX){
+                LCD_write_english_string(0,0,"X");
+                OCR3B = ICR3 - ((adc_read(1) * 1.66) + 500);
+            }
             break;
             
         default:
             break;
     }
+    return state;
+
 }
 
 //SHIFTER TICK FUNCTION
@@ -318,15 +332,22 @@ int LCDTick(int state){
     }
     switch (state) {
         case LCD_Off: //LCD off
-            LCD_write_english_string(0,3,"   Motor off");
-            LCD_write_english_string(0,5, "                            ");
+            LCD_write_english_string(0,3,"  Motor off");
+            LCD_write_english_string(0,5, "                  ");
             LCD_write_english_string(20,5, mode[transmission]);
             break;
         case LCD_display: ; //LCD display
-            LCD_write_english_string(0,3,gears[currentGear]);
+            if(!transmission){
+                LCD_write_english_string(0,3,gears[currentGear]);
+            }
+            else{
+                LCD_write_english_string(0,2,"  Manual Mode");
+                LCD_write_english_string(0,3,"  Engaged");
+            }
             break;
         case LCD_shift: //LCD shift
-            LCD_write_english_string(0,3,"  Currently\n    Shifting");
+            LCD_write_english_string(0,3,"Currently");
+            LCD_write_english_string(0,4,"Shifting");
             break;
         default:
             break;
