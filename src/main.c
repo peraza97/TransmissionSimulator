@@ -108,9 +108,10 @@ int TransmissionToggleTick(int state){
         case Tran_Auto: //tran auto
             if(toggle && !ignition){
                 transmission = 1;
+                LCD_clear();
                 state = Tran_Manual_Hold;
-                //going to manual, go to middle
                 updateServos(4);
+                updateMotor(4);
             }
             else{
                 state = Tran_Auto;
@@ -127,12 +128,12 @@ int TransmissionToggleTick(int state){
         case Tran_Manual: //tran manual
             if(toggle && !ignition){
                 //going to automatic, shift to gear 1
+                LCD_clear();
                 transmission = 0;
                 currentGear = 0;
                 updateServos(4);
-                //TO DO
-                //go to the middle for now
-                //updateServos(currentGear);
+                updateServos(currentGear);
+                updateMotor(currentGear);
                 
                 
                 state = Tran_Auto_Hold;
@@ -164,34 +165,31 @@ int JoystickTick(int state){
     unsigned char stick = getJoystick();
     unsigned char clutchY = ~PINA & 0x20;
     unsigned char clutchX = ~PINA & 0x10;
+    static long tempX;
+    static long tempY;
     switch (state) {
         case Joystick_Start: //start state
             state = Joystick_Wait;
+            tempX = 1500;
+            tempY = 1400;
             break;
         case Joystick_Wait: //wait state
-            if(transmission == 0){                  //automatic transmission
-                if(ignition && stick && !is_shifting){
-                    if((stick == 1 && currentGear< 3) || (stick == 2 && currentGear > 0)){
+            LCD_write_english_string(0,0,"                                     ");
+            if(transmission == 0 && ignition && stick && !is_shifting){
+                if((stick == 1 && currentGear< 3) || (stick == 2 && currentGear > 0)){ //automatic transmission
                     state = Auto_Shift;
                     QueueEnqueue(shiftList,stick);
-                    }
-                    else{
-                        state = Joystick_Wait;
-                    }
                 }
                 else{
                     state = Joystick_Wait;
                 }
             }
-            else if(transmission == 1){             //manual transmission
-                if((clutchY || clutchX) && ignition){
-                    state = Joystick_Manual;
-                }
-                else{
-                    state = Joystick_Wait;
-                }
+            else if(transmission == 1 && ignition && (clutchY || clutchX)){             //manual transmission
+                LCD_write_english_string(0,3,"  Engaged");
+                state = Joystick_Manual;
             }
-            else{                                 // should never hit here
+    
+            else{                                                                       //go to wait state
                 state = Joystick_Wait;
             }
             break;
@@ -204,7 +202,7 @@ int JoystickTick(int state){
             }
             break;
         case Joystick_Manual:// Manual state
-            if(stick){
+            if(clutchX || clutchY){
                 state = Joystick_Manual;
             }
             else{
@@ -218,14 +216,39 @@ int JoystickTick(int state){
     //actions
     switch (state) {
         case Joystick_Manual: //update the motors directly
-            LCD_write_english_string(0,0,"                              ");
-            LCD_joystick(10,0,adc_read(0));
-            LCD_joystick(50,0,adc_read(1));
+            LCD_write_english_string(0,0,"                                        ");
+            //y is up down
             if(clutchY){
-                OCR3A = ICR3 - ((adc_read(0) * 1.86) + 600);
+                tempY = convertInput(0,adc_read(0));
+                OCR3A = ICR3 - tempY;
             }
+            //x is left right
             else if(clutchX){
-                OCR3B = ICR3 - ((adc_read(1) * 1.66) + 500);
+                tempX = convertInput(1,adc_read(1));
+                OCR3B = ICR3 - tempX;
+            }
+            
+            LCD_joystick(10,0,tempY);
+            LCD_joystick(50,0,tempX);
+            //update motors
+            //gear 1
+            if(tempY < 700 && tempX > 1900 ){
+                updateMotor(0);
+            }
+            //gear 2
+            else if(tempY > 2100 && tempX > 1900){
+                updateMotor(1);
+            }
+            //gear 3
+            else if(tempY < 700 && tempX < 1200){
+                updateMotor(2);
+            }
+            //gear 4
+            else if(tempY > 2200 && tempX < 1200){
+                updateMotor(3);
+            }
+            else{
+                updateMotor(4);
             }
             break;
             
@@ -350,7 +373,6 @@ int LCDTick(int state){
             }
             else{
                 LCD_write_english_string(0,2,"  Manual Mode");
-                LCD_write_english_string(0,3,"  Engaged");
             }
             break;
         case LCD_shift: //LCD shift
@@ -382,20 +404,14 @@ int main(void){
     //get the value in eeprom
     uint8_t ByteOfData;
     ByteOfData = eeprom_read_byte((uint8_t*)EEPROM_ADDRESS);
-    
-    /*
+
     if(ByteOfData == 0 || ByteOfData ==1 ||  ByteOfData ==2 || ByteOfData ==3){
         currentGear = ByteOfData;
     }
-    */
-    
+
     //update my servos and motors first thing
     updateServos(4);
-    
-    //CHANGED THIS CODE
-    //TO DO
-    //start servos at the center for testing
-    //updateServos(currentGear);
+    updateServos(currentGear);
     
     //init adc
     adc_init();

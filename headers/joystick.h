@@ -4,5 +4,6 @@
 #include <stdlib.h>
 
 unsigned char getJoystick();
+unsigned long convertInput(unsigned char x, unsigned long value);
 
 #endif

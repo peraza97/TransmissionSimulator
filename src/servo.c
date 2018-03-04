@@ -32,13 +32,13 @@ void updateServos(unsigned char x){
             break;
         //gear 2
         case 1:
-            turnServo2(servo2_right_pos);
-            turnServo1(servo1_right_pos);
+            turnServo2(servo2_left_pos);
+            turnServo1(servo1_left_pos);
             break;
         //gear 3
         case 2:
-            turnServo2(servo2_left_pos);
-            turnServo1(servo1_left_pos);
+            turnServo2(servo2_right_pos);
+            turnServo1(servo1_right_pos);
             break;
         //gear 4
         case 3:

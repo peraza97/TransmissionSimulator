@@ -21,28 +21,11 @@ void updateMotor(unsigned char x){
         case 3:
             OCR0A = motor_gear4_speed;
             break;
+        case 4:
+            OCR0A = 0;
         default:
             break;
     }
 }
 
-/*
-void motorChangeGear(unsigned char x){
-    OCR0A = x;
-}
- */
 
-/*
-void motorGear1(){
-        OCR0A = 100;
-}
-void motorGear2(){
-        OCR0A = 128;
-}
-void motorGear3(){
-        OCR0A = 200;
-}
-void motorGear4(){
-        OCR0A = 255;
-}
- */
