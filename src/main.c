@@ -81,10 +81,12 @@ int MotorTick(int state){
     switch (state) {
         case On_Hold:
             ignition = 0x01;
+            //enable signal to lcd93
             PORTB |= (0x01 << 1);
             break;
         case Off_Hold:
             ignition = 0x00;
+            //disable singal to motor
             PORTB &= ~(0x01 << 1);
             break;
         default:
@@ -107,6 +109,7 @@ int TransmissionToggleTick(int state){
             if(toggle && !ignition){
                 transmission = 1;
                 state = Tran_Manual_Hold;
+                //going to manual, go to middle
                 updateServos(4);
             }
             else{
@@ -123,10 +126,15 @@ int TransmissionToggleTick(int state){
             break;
         case Tran_Manual: //tran manual
             if(toggle && !ignition){
+                //going to automatic, shift to gear 1
                 transmission = 0;
                 currentGear = 0;
                 updateServos(4);
-                updateServos(currentGear);
+                //TO DO
+                //go to the middle for now
+                //updateServos(currentGear);
+                
+                
                 state = Tran_Auto_Hold;
             }
             else{
@@ -180,7 +188,6 @@ int JoystickTick(int state){
                     state = Joystick_Manual;
                 }
                 else{
-                    LCD_write_english_string(0,0," ");
                     state = Joystick_Wait;
                 }
             }
@@ -197,7 +204,6 @@ int JoystickTick(int state){
             }
             break;
         case Joystick_Manual:// Manual state
-            //LCD_write_english_string(0,0," here");
             if(stick){
                 state = Joystick_Manual;
             }
@@ -209,14 +215,16 @@ int JoystickTick(int state){
             state = Joystick_Wait;
             break;
     }
+    //actions
     switch (state) {
         case Joystick_Manual: //update the motors directly
+            LCD_write_english_string(0,0,"                              ");
+            LCD_joystick(10,0,adc_read(0));
+            LCD_joystick(50,0,adc_read(1));
             if(clutchY){
-                LCD_write_english_string(0,0,"Y");
                 OCR3A = ICR3 - ((adc_read(0) * 1.86) + 600);
             }
             else if(clutchX){
-                LCD_write_english_string(0,0,"X");
                 OCR3B = ICR3 - ((adc_read(1) * 1.66) + 500);
             }
             break;
@@ -346,8 +354,8 @@ int LCDTick(int state){
             }
             break;
         case LCD_shift: //LCD shift
-            LCD_write_english_string(0,3,"Currently");
-            LCD_write_english_string(0,4,"Shifting");
+            LCD_write_english_string(0,3,"  Currently");
+            LCD_write_english_string(0,4,"  Shifting");
             break;
         default:
             break;
@@ -375,15 +383,19 @@ int main(void){
     uint8_t ByteOfData;
     ByteOfData = eeprom_read_byte((uint8_t*)EEPROM_ADDRESS);
     
+    /*
     if(ByteOfData == 0 || ByteOfData ==1 ||  ByteOfData ==2 || ByteOfData ==3){
         currentGear = ByteOfData;
     }
-    else{
-        currentGear = 0;
-    }
+    */
+    
     //update my servos and motors first thing
     updateServos(4);
-    updateServos(currentGear);
+    
+    //CHANGED THIS CODE
+    //TO DO
+    //start servos at the center for testing
+    //updateServos(currentGear);
     
     //init adc
     adc_init();

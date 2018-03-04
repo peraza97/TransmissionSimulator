@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <util/delay.h>
+#include <stdio.h>
 #include "./../headers/nokia.h"
 
 //#define F_CPU 8000000UL
@@ -188,4 +189,11 @@ void LCD_write_english_string(unsigned char X,unsigned char Y,char *s)
         LCD_write_char(*s);
         s++;
     }
+}
+
+void LCD_joystick(unsigned char X,unsigned char Y,unsigned long value){
+    char str[16];
+    sprintf(str, "%u", value);
+    LCD_write_english_string(X,Y,str);
+    
 }
