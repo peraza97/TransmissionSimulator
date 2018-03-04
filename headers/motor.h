@@ -9,5 +9,6 @@
 
 void motorInit();
 void updateMotor(unsigned char x);
+void manualMotorUpdate(unsigned long tempY, unsigned long tempX);
 
 #endif

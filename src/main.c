@@ -19,14 +19,17 @@
 #define EEPROM_ADDRESS 0x00
 
 //transmission
-unsigned char * mode[] = {" Auto "," Manual "};
+unsigned char * mode[] = {"Auto ","Manual "};
 unsigned char transmission = 0x00;
+
 //stores the display message for each gear
 unsigned char * gears[] = {"  Gear 1", "  Gear 2", "  Gear 3","  Gear 4"};
 //stores the currentGear of the tranmission
 unsigned char currentGear = 0x00;
+
 //tracks if the car is on or not
 unsigned char ignition = 0x00;
+
 //am i currently shifting
 unsigned char is_shifting = 0x00;
 
@@ -43,7 +46,9 @@ int MotorTick(int state){
             break;
         case Off: //MOTOR OFF STATE
             if(button){
+                if(!transmission){ //want to turn on the motor only if we are in automatic
                 updateMotor(currentGear);
+                }
                 state = On_Hold;
             }
             else{
@@ -108,10 +113,10 @@ int TransmissionToggleTick(int state){
         case Tran_Auto: //tran auto
             if(toggle && !ignition){
                 transmission = 1;
-                LCD_clear();
                 state = Tran_Manual_Hold;
                 updateServos(4);
                 updateMotor(4);
+                LCD_clear();
             }
             else{
                 state = Tran_Auto;
@@ -134,8 +139,6 @@ int TransmissionToggleTick(int state){
                 updateServos(4);
                 updateServos(currentGear);
                 updateMotor(currentGear);
-                
-                
                 state = Tran_Auto_Hold;
             }
             else{
@@ -162,9 +165,11 @@ int TransmissionToggleTick(int state){
 enum JoyStick_States {Joystick_Start, Joystick_Manual, Joystick_Wait, Auto_Shift} joystick_State;
 
 int JoystickTick(int state){
+    //variables
     unsigned char stick = getJoystick();
     unsigned char clutchY = ~PINA & 0x20;
     unsigned char clutchX = ~PINA & 0x10;
+    //static variables
     static long tempX;
     static long tempY;
     switch (state) {
@@ -174,7 +179,6 @@ int JoystickTick(int state){
             tempY = 1400;
             break;
         case Joystick_Wait: //wait state
-            LCD_write_english_string(0,0,"                                     ");
             if(transmission == 0 && ignition && stick && !is_shifting){
                 if((stick == 1 && currentGear< 3) || (stick == 2 && currentGear > 0)){ //automatic transmission
                     state = Auto_Shift;
@@ -185,7 +189,6 @@ int JoystickTick(int state){
                 }
             }
             else if(transmission == 1 && ignition && (clutchY || clutchX)){             //manual transmission
-                LCD_write_english_string(0,3,"  Engaged");
                 state = Joystick_Manual;
             }
     
@@ -227,29 +230,12 @@ int JoystickTick(int state){
                 tempX = convertInput(1,adc_read(1));
                 OCR3B = ICR3 - tempX;
             }
-            
             LCD_joystick(10,0,tempY);
             LCD_joystick(50,0,tempX);
-            //update motors
-            //gear 1
-            if(tempY < 700 && tempX > 1900 ){
-                updateMotor(0);
-            }
-            //gear 2
-            else if(tempY > 2100 && tempX > 1900){
-                updateMotor(1);
-            }
-            //gear 3
-            else if(tempY < 700 && tempX < 1200){
-                updateMotor(2);
-            }
-            //gear 4
-            else if(tempY > 2200 && tempX < 1200){
-                updateMotor(3);
-            }
-            else{
-                updateMotor(4);
-            }
+            manualMotorUpdate(tempY, tempX);
+            break;
+        case Joystick_Wait:
+            LCD_write_english_string(0,0,"                                        ");
             break;
             
         default:

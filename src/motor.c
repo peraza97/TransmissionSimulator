@@ -28,4 +28,25 @@ void updateMotor(unsigned char x){
     }
 }
 
+void manualMotorUpdate(unsigned long tempY, unsigned long tempX){
+    //gear 1
+    if(tempY < 700 && tempX > 1900 ){
+        updateMotor(0);
+    }
+    //gear 2
+    else if(tempY > 2100 && tempX > 1900){
+        updateMotor(1);
+    }
+    //gear 3
+    else if(tempY < 700 && tempX < 1200){
+        updateMotor(2);
+    }
+    //gear 4
+    else if(tempY > 2200 && tempX < 1200){
+        updateMotor(3);
+    }
+    else{
+        updateMotor(4);
+    }
+}
 
