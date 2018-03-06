@@ -197,3 +197,11 @@ void LCD_joystick(unsigned char X,unsigned char Y,unsigned long value){
     LCD_write_english_string(X,Y,str);
     
 }
+
+void LCD_clear_Row(unsigned char x){
+    LCD_set_XY(0,x);
+    for (unsigned int i=0; i<84; i++){
+        LCD_write_byte(0, 0);
+    }
+    
+}

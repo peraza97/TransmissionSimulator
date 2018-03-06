@@ -12,18 +12,30 @@
  void delay_ms(int miliSec);
 */
 
+//84 columns
+//48 rows
+
+//5 rows max
+//14 characters per line
+
+//to write word on the same line
+/*
+LCD_write_english_string(0,0,"H");
+LCD_write_english_string(6,0,"e");
+LCD_write_english_string(12,0,"l");
+LCD_write_english_string(18,0,"l");
+LCD_write_english_string(24,0,"0 ");
+ */
+
+
 int main(void){
     //initialize the registers
     DDRB = 0xFF; PORTB = 0x00;
     //LCD SCREEN Register
     DDRC = 0xFF; PORTC = 0x00;
     LCD_init();
-
-    LCD_clear();
     while(1){
-        LCD_write_english_string(0,0,"Hello");
-        LCD_write_english_string(0,1,"Omar");
-         LCD_write_english_string(0,2,"P");
+        //LCD_clear_Row(0);
     }
     
 }

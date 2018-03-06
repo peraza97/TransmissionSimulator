@@ -18,6 +18,10 @@
 //memory adress storing the current gear in eeprom
 #define EEPROM_ADDRESS 0x00
 
+//define clutches
+#define CLUTCHY  ~PINA & 0x20
+#define CLUTCHX ~PINA & 0x10
+
 //transmission
 unsigned char * mode[] = {"Auto ","Manual "};
 unsigned char transmission = 0x00;
@@ -167,8 +171,6 @@ enum JoyStick_States {Joystick_Start, Joystick_Manual, Joystick_Wait, Auto_Shift
 int JoystickTick(int state){
     //variables
     unsigned char stick = getJoystick();
-    unsigned char clutchY = ~PINA & 0x20;
-    unsigned char clutchX = ~PINA & 0x10;
     //static variables
     static long tempX;
     static long tempY;
@@ -188,7 +190,7 @@ int JoystickTick(int state){
                     state = Joystick_Wait;
                 }
             }
-            else if(transmission == 1 && ignition && (clutchY || clutchX)){             //manual transmission
+            else if(transmission == 1 && ignition && (CLUTCHY || CLUTCHX)){             //manual transmission
                 state = Joystick_Manual;
             }
     
@@ -205,7 +207,7 @@ int JoystickTick(int state){
             }
             break;
         case Joystick_Manual:// Manual state
-            if(clutchX || clutchY){
+            if(CLUTCHX || CLUTCHY){
                 state = Joystick_Manual;
             }
             else{
@@ -219,23 +221,19 @@ int JoystickTick(int state){
     //actions
     switch (state) {
         case Joystick_Manual: //update the motors directly
-            LCD_write_english_string(0,0,"                                        ");
             //y is up down
-            if(clutchY){
+            if(CLUTCHY){
                 tempY = convertInput(0,adc_read(0));
                 OCR3A = ICR3 - tempY;
             }
             //x is left right
-            else if(clutchX){
+            else if(CLUTCHX){
                 tempX = convertInput(1,adc_read(1));
                 OCR3B = ICR3 - tempX;
             }
-            LCD_joystick(10,0,tempY);
-            LCD_joystick(50,0,tempX);
             manualMotorUpdate(tempY, tempX);
             break;
         case Joystick_Wait:
-            LCD_write_english_string(0,0,"                                        ");
             break;
             
         default:
@@ -314,7 +312,7 @@ int LCDTick(int state){
             break;
         case LCD_Off: //LCD Off
             if(ignition){
-                LCD_clear();
+                LCD_clear_Row(3);
                 state = LCD_display;
             }
             else{
@@ -322,11 +320,14 @@ int LCDTick(int state){
             }
             break;
         case LCD_display: //LCD Display
+            LCD_clear_Row(2);
+            LCD_clear_Row(3);
+            LCD_clear_Row(4);
+            LCD_clear_Row(5);
             if(ignition && !is_shifting){
                 state = LCD_display;
             }
             else if(ignition && is_shifting){
-                LCD_clear();
                 state = LCD_shift;
             }
             else{
@@ -339,7 +340,8 @@ int LCDTick(int state){
                 state = LCD_shift;
             }
             else{
-                LCD_clear();
+                LCD_clear_Row(2);
+                LCD_clear_Row(4);
                 state = LCD_display;
             }
             break;
@@ -349,21 +351,33 @@ int LCDTick(int state){
     }
     switch (state) {
         case LCD_Off: //LCD off
+            LCD_clear_Row(0);
+            LCD_write_english_string(0,0,"Mode: ");
+            LCD_write_english_string(36,0, mode[transmission]);
             LCD_write_english_string(0,3,"  Motor off");
-            LCD_write_english_string(0,5, "                  ");
-            LCD_write_english_string(20,5, mode[transmission]);
             break;
         case LCD_display: ; //LCD display
             if(!transmission){
-                LCD_write_english_string(0,3,gears[currentGear]);
+                LCD_write_english_string(6,3,gears[currentGear]);
             }
             else{
-                LCD_write_english_string(0,2,"  Manual Mode");
+                if(CLUTCHX || CLUTCHY){
+                    LCD_write_english_string(18,2,"Clutch");
+                    LCD_write_english_string(18,3,"Engaged ");
+                    LCD_write_english_string(0,5,"X: ");
+                    LCD_joystick(12,5,convertInput(0,adc_read(0)));
+                    LCD_write_english_string(42,5,"Y: ");
+                    LCD_joystick(52,5,convertInput(1,adc_read(1)));
+                }
+                else{
+                    LCD_write_english_string(18,2,"Clutch");
+                    LCD_write_english_string(6,3,"Disengaged ");
+                }
             }
             break;
         case LCD_shift: //LCD shift
-            LCD_write_english_string(0,3,"  Currently");
-            LCD_write_english_string(0,4,"  Shifting");
+            LCD_write_english_string(12,2,"Currently");
+            LCD_write_english_string(12,4,"Shifting");
             break;
         default:
             break;
