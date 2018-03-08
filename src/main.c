@@ -21,19 +21,20 @@
 //define clutches
 #define CLUTCHY  ~PINA & 0x20
 #define CLUTCHX ~PINA & 0x10
+//define start button
+#define START ~PINA & 0x04
+//define MODE_SELECT
+#define MODE_SELECT ~PINA & 0x08
 
 //transmission
 unsigned char * mode[] = {"Auto ","Manual "};
 unsigned char transmission = 0x00;
-
 //stores the display message for each gear
-unsigned char * gears[] = {"  Gear 1", "  Gear 2", "  Gear 3","  Gear 4"};
+unsigned char * gears[] = {"  Gear 1 ", "  Gear 2 ", "  Gear 3 ","  Gear 4 "};
 //stores the currentGear of the tranmission
 unsigned char currentGear = 0x00;
-
 //tracks if the car is on or not
 unsigned char ignition = 0x00;
-
 //am i currently shifting
 unsigned char is_shifting = 0x00;
 
@@ -49,7 +50,7 @@ int MotorTick(int state){
             state = Off;
             break;
         case Off: //MOTOR OFF STATE
-            if(button){
+            if(START){
                 if(!transmission){ //want to turn on the motor only if we are in automatic
                 updateMotor(currentGear);
                 }
@@ -60,7 +61,7 @@ int MotorTick(int state){
             }
             break;
         case On_Hold: //ON_HOLD STATE
-            if(button){
+            if(START){
                 state = On_Hold;
             }
             else{
@@ -68,7 +69,7 @@ int MotorTick(int state){
             }
             break;
         case On: //On STATE
-            if(button){
+            if(START){
                 state = Off_Hold;
             }
             else{
@@ -76,7 +77,7 @@ int MotorTick(int state){
             }
             break;
         case Off_Hold: //Off_Hold STATE
-            if(button){
+            if(START){
                 state = Off_Hold;
             }
             else{
@@ -109,25 +110,25 @@ int MotorTick(int state){
 enum Transmission_States {Tran_Start, Tran_Auto, Tran_Auto_Hold, Tran_Manual, Tran_Manual_Hold} T_State;
 
 int TransmissionToggleTick(int state){
-    unsigned char toggle = ~PINA & 0x08;
     switch (state) {
         case Tran_Start:
             state = Tran_Auto;
             break;
         case Tran_Auto: //tran auto
-            if(toggle && !ignition){
+            if(MODE_SELECT && !ignition){
                 transmission = 1;
                 state = Tran_Manual_Hold;
                 updateServos(4);
                 updateMotor(4);
-                LCD_clear();
+                //TODO
+                //why was there LCD_CLEAR() here?
             }
             else{
                 state = Tran_Auto;
             }
             break;
         case Tran_Manual_Hold: //tran manual hold
-            if(toggle){
+            if(MODE_SELECT){
                 state = Tran_Manual_Hold;
             }
             else {
@@ -135,9 +136,11 @@ int TransmissionToggleTick(int state){
             }
             break;
         case Tran_Manual: //tran manual
-            if(toggle && !ignition){
+            if(MODE_SELECT && !ignition){
                 //going to automatic, shift to gear 1
-                LCD_clear();
+                
+                //TO DO why clear?
+                //LCD_clear();
                 transmission = 0;
                 currentGear = 0;
                 updateServos(4);
@@ -150,7 +153,7 @@ int TransmissionToggleTick(int state){
             }
             break;
         case Tran_Auto_Hold: //tran auto hold
-            if(toggle){
+            if(MODE_SELECT){
                 state = Tran_Auto_Hold;
             }
             else{
@@ -223,12 +226,12 @@ int JoystickTick(int state){
         case Joystick_Manual: //update the motors directly
             //y is up down
             if(CLUTCHY){
-                tempY = convertInput(0,adc_read(0));
+                tempY = convertInput(0,1024 - adc_read(0));
                 OCR3A = ICR3 - tempY;
             }
             //x is left right
             else if(CLUTCHX){
-                tempX = convertInput(1,adc_read(1));
+                tempX = convertInput(1,1024 - adc_read(1));
                 OCR3B = ICR3 - tempX;
             }
             manualMotorUpdate(tempY, tempX);
@@ -361,13 +364,18 @@ int LCDTick(int state){
                 LCD_write_english_string(6,3,gears[currentGear]);
             }
             else{
-                if(CLUTCHX || CLUTCHY){
+                if(CLUTCHY){
                     LCD_write_english_string(18,2,"Clutch");
                     LCD_write_english_string(18,3,"Engaged ");
-                    LCD_write_english_string(0,5,"X: ");
-                    LCD_joystick(12,5,convertInput(0,adc_read(0)));
-                    LCD_write_english_string(42,5,"Y: ");
-                    LCD_joystick(52,5,convertInput(1,adc_read(1)));
+                    LCD_write_english_string(0,5,"Y: ");
+                    LCD_joystick(12,5,convertInput(0,1024 - adc_read(0)));
+                }
+                else if(CLUTCHX){
+                    LCD_write_english_string(18,2,"Clutch");
+                    LCD_write_english_string(18,3,"Engaged ");
+                    LCD_write_english_string(42,5,"X: ");
+                    LCD_joystick(52,5,convertInput(1,1024 - adc_read(1)));
+                    
                 }
                 else{
                     LCD_write_english_string(18,2,"Clutch");
@@ -384,9 +392,6 @@ int LCDTick(int state){
     }
     return state;
 }
-
-
-
 
 int main(void){
     //Joystick Register/Button Register
